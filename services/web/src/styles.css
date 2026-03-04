@@ -1,6 +1,6 @@
 :root {
   color: #ffffff;
-  background-color: #1e1e1e;
+  background-color: #111111;
   font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
 }
 
@@ -11,38 +11,88 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #1e1e1e;
+  background: #111111;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 .scada-screen {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 48px 24px;
+  padding: 24px 32px 40px;
+  gap: 20px;
 }
 
-h1 {
+.header {
+  position: relative;
+  padding-top: 8px;
+}
+
+.header__title {
   margin: 0;
   text-align: center;
-  font-size: clamp(40px, 6vw, 60px);
+  font-size: clamp(48px, 6vw, 60px);
   font-weight: 700;
   color: #ffffff;
 }
 
-.mnemonic-wrapper {
-  width: min(1200px, 100%);
-  margin-top: 56px;
-  display: flex;
-  justify-content: center;
+.header__time {
+  position: absolute;
+  top: 10px;
+  right: 0;
+  color: #d7d7d7;
+  font-size: clamp(18px, 1.8vw, 26px);
+  font-weight: 500;
 }
 
-svg {
+.conveyor-list {
+  margin-top: 10px;
+  width: min(1400px, 100%);
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 18px;
+}
+
+.conveyor-card {
+  border: 1px solid #2d2d2d;
+  border-radius: 14px;
+  background: #161616;
+  padding: 12px;
+}
+
+.conveyor-svg {
   width: 100%;
   height: auto;
 }
 
-text {
-  font-size: 16px;
+.conveyor-label {
+  fill: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.conveyor-load {
+  fill: #ffffff;
+  font-size: 14px;
   font-weight: 500;
+}
+
+.roller {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: roller-spin 1.6s linear infinite;
+  will-change: transform;
+}
+
+@keyframes roller-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
