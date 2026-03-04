@@ -1,0 +1,41 @@
+version: "3.9"
+
+name: ${PROJECT_NAME}
+
+services:
+
+  api:
+    build: ./services/api
+    container_name: kap_api
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  web:
+    build: ./services/web
+    container_name: kap_web
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  nginx:
+    image: nginx:stable
+    container_name: kap_nginx
+    ports:
+      - "${NGINX_PORT}:80"
+    volumes:
+      - ./services/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+      - api
+
+volumes:
+  db_data:
+
+networks:
+  kap_net:
+    name: kap-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.19.16/24
