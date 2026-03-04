@@ -1,6 +1,6 @@
 :root {
   color: #ffffff;
-  background-color: #111111;
+  background-color: #0f0f0f;
   font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
 }
 
@@ -11,7 +11,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #111111;
+  background: #0f0f0f;
 }
 
 #root {
@@ -69,30 +69,55 @@ body {
   height: auto;
 }
 
-.conveyor-label {
-  fill: #ffffff;
-  font-size: 15px;
+.conveyor-label,
+.conveyor-load {
+  font-size: 14px;
   font-weight: 600;
 }
 
-.conveyor-load {
+.conveyor-label {
+  font-size: 15px;
+}
+
+.conveyor-label--light {
   fill: #ffffff;
-  font-size: 14px;
-  font-weight: 500;
+}
+
+.conveyor-label--muted {
+  fill: #d0d0d0;
 }
 
 .roller {
   transform-box: fill-box;
   transform-origin: center;
-  animation: roller-spin 1.6s linear infinite;
   will-change: transform;
 }
 
-@keyframes roller-spin {
+.roller--running {
+  animation: rotate 1.5s linear infinite;
+}
+
+.conveyor-indicator--error {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rotate {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
   }
 }
