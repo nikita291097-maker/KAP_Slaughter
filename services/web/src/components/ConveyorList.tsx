@@ -1,24 +1,56 @@
+import { useEffect, useState } from 'react';
+
 import Conveyor, { type ConveyorStatus } from './Conveyor';
 
 type ConveyorData = {
+  id: number;
   name: string;
   status: ConveyorStatus;
-  load: number;
+  carcass_count: number;
+  updated_at: string | null;
 };
 
-const conveyors: ConveyorData[] = [
-  { name: 'Конвейер обескровливания', status: 'running', load: 72 },
-  { name: 'Элеватор опуска в шпарильную установку', status: 'stopped', load: 0 },
-  { name: 'Конвейер разделочный', status: 'error', load: 28 },
-  { name: 'Конвейер для органов', status: 'warning', load: 41 },
-  { name: 'Конвейер шокового туннеля', status: 'running', load: 66 }
-];
-
 export default function ConveyorList() {
+  const [conveyors, setConveyors] = useState<ConveyorData[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadConveyors = async () => {
+      try {
+        const response = await fetch('/api/conveyors');
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as ConveyorData[];
+        if (isMounted) {
+          setConveyors(data);
+        }
+      } catch (_error) {
+        // noop
+      }
+    };
+
+    loadConveyors();
+    const timerId = window.setInterval(loadConveyors, 2000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(timerId);
+    };
+  }, []);
+
   return (
     <section className="conveyor-list" aria-label="Мнемосхема конвейеров">
       {conveyors.map((conveyor) => (
-        <Conveyor key={conveyor.name} name={conveyor.name} status={conveyor.status} load={conveyor.load} />
+        <Conveyor
+          key={conveyor.id}
+          name={conveyor.name}
+          status={conveyor.status}
+          carcassCount={conveyor.carcass_count}
+          updatedAt={conveyor.updated_at}
+        />
       ))}
     </section>
   );

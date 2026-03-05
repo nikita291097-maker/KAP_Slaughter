@@ -1,38 +1,48 @@
-export type ConveyorStatus = 'running' | 'stopped' | 'error' | 'warning';
+export type ConveyorStatus = 'RUNNING' | 'STOPPED' | 'ERROR' | 'WARNING' | 'MAINTENANCE';
 
 type ConveyorProps = {
   name: string;
   status: ConveyorStatus;
-  load: number;
+  carcassCount: number;
+  updatedAt: string | null;
 };
 
 const STATUS_META: Record<ConveyorStatus, { belt: string; indicator: string; labelClass: string }> = {
-  running: { belt: '#00c853', indicator: '#00c853', labelClass: 'conveyor-label--light' },
-  stopped: { belt: '#5c5c5c', indicator: '#5c5c5c', labelClass: 'conveyor-label--muted' },
-  error: { belt: '#ff3b30', indicator: '#ff3b30', labelClass: 'conveyor-label--light' },
-  warning: { belt: '#ff9800', indicator: '#ff9800', labelClass: 'conveyor-label--light' }
+  RUNNING: { belt: '#00c853', indicator: '#00c853', labelClass: 'conveyor-label--dark' },
+  STOPPED: { belt: '#9e9e9e', indicator: '#9e9e9e', labelClass: 'conveyor-label--dark' },
+  ERROR: { belt: '#ff3b30', indicator: '#ff3b30', labelClass: 'conveyor-label--dark' },
+  WARNING: { belt: '#ff9800', indicator: '#ff9800', labelClass: 'conveyor-label--dark' },
+  MAINTENANCE: { belt: '#1e88e5', indicator: '#1e88e5', labelClass: 'conveyor-label--dark' }
 };
 
-export default function Conveyor({ name, status, load }: ConveyorProps) {
+function formatUpdatedAt(updatedAt: string | null): string {
+  if (!updatedAt) {
+    return 'нет данных';
+  }
+
+  const date = new Date(updatedAt);
+  if (Number.isNaN(date.getTime())) {
+    return updatedAt;
+  }
+
+  return date.toLocaleString('sv-SE').replace('T', ' ');
+}
+
+export default function Conveyor({ name, status, carcassCount, updatedAt }: ConveyorProps) {
   const meta = STATUS_META[status];
-  const rollerClass = `roller${status === 'running' ? ' roller--running' : ''}`;
-  const indicatorClass = `conveyor-indicator${status === 'error' ? ' conveyor-indicator--error' : ''}`;
+  const rollerClass = `roller${status === 'RUNNING' ? ' roller--running' : ''}`;
+  const indicatorClass = `conveyor-indicator${status === 'ERROR' ? ' conveyor-indicator--error' : ''}`;
 
   return (
     <article className="conveyor-card" aria-label={name}>
-      <svg
-        className="conveyor-svg"
-        viewBox="0 0 360 130"
-        role="img"
-        aria-label={`${name}, статус ${status}, загрузка ${load}%`}
-      >
-        <rect className="conveyor-track" x="30" y="50" width="300" height="30" rx="15" fill="#2d2d2d" />
+      <svg className="conveyor-svg" viewBox="0 0 360 130" role="img" aria-label={`${name}, статус ${status}`}>
+        <rect className="conveyor-track" x="30" y="50" width="300" height="30" rx="15" fill="#dadce0" />
         <rect className="conveyor-belt" x="36" y="56" width="288" height="18" rx="9" fill={meta.belt} />
 
         {[70, 140, 210, 280].map((x) => (
           <g key={x} transform={`translate(${x} 65)`}>
-            <circle className={rollerClass} r="13" fill="#1a1a1a" />
-            <circle className={rollerClass} r="5" fill="#7a7a7a" />
+            <circle className={rollerClass} r="13" fill="#646464" />
+            <circle className={rollerClass} r="5" fill="#bcbcbc" />
           </g>
         ))}
 
@@ -40,10 +50,11 @@ export default function Conveyor({ name, status, load }: ConveyorProps) {
         <text x="30" y="24" className={`conveyor-label ${meta.labelClass}`}>
           {name}
         </text>
-        <text x="235" y="115" className={`conveyor-load ${meta.labelClass}`}>
-          Загрузка: {load}%
+        <text x="175" y="115" className={`conveyor-load ${meta.labelClass}`}>
+          Кол-во туш на линии: {carcassCount}
         </text>
       </svg>
+      <p className="conveyor-updated">Обновлено: {formatUpdatedAt(updatedAt)}</p>
     </article>
   );
 }

@@ -16,6 +16,19 @@ services:
     build: ./services/web
     container_name: kap_web
     restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - api
+    networks:
+      - kap_net
+
+  simulator:
+    build: ./services/simulator
+    container_name: kap_simulator
+    restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       - api
     networks:

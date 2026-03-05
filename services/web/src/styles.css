@@ -1,6 +1,6 @@
 :root {
-  color: #ffffff;
-  background-color: #0f0f0f;
+  color: #1e1e1e;
+  background-color: #f5f6f7;
   font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
 }
 
@@ -11,7 +11,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #0f0f0f;
+  background: #f5f6f7;
 }
 
 #root {
@@ -36,14 +36,14 @@ body {
   text-align: center;
   font-size: clamp(48px, 6vw, 60px);
   font-weight: 700;
-  color: #ffffff;
+  color: #1e1e1e;
 }
 
 .header__time {
   position: absolute;
   top: 10px;
   right: 0;
-  color: #d7d7d7;
+  color: #2f2f2f;
   font-size: clamp(18px, 1.8vw, 26px);
   font-weight: 500;
 }
@@ -58,9 +58,9 @@ body {
 }
 
 .conveyor-card {
-  border: 1px solid #2d2d2d;
+  border: 1px solid #e0e0e0;
   border-radius: 14px;
-  background: #161616;
+  background: #ffffff;
   padding: 12px;
 }
 
@@ -79,12 +79,14 @@ body {
   font-size: 15px;
 }
 
-.conveyor-label--light {
-  fill: #ffffff;
+.conveyor-label--dark {
+  fill: #1e1e1e;
 }
 
-.conveyor-label--muted {
-  fill: #d0d0d0;
+.conveyor-updated {
+  margin: 8px 0 0;
+  color: #444;
+  font-size: 13px;
 }
 
 .roller {
