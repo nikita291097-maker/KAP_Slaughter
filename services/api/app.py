@@ -6,7 +6,7 @@ import psycopg2
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="KAP API", version="0.3")
+app = FastAPI(title="KAP API", version="0.4")
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,6 +52,20 @@ def ensure_schema() -> None:
                     temperature REAL,
                     alarm BOOLEAN DEFAULT FALSE,
                     updated_at TIMESTAMP DEFAULT now()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS system_events (
+                    id BIGSERIAL PRIMARY KEY,
+                    conveyor_id INTEGER REFERENCES conveyors(id),
+                    event_class TEXT NOT NULL,
+                    event_state TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    severity INTEGER DEFAULT 1,
+                    created_at TIMESTAMP NOT NULL DEFAULT now(),
+                    cleared_at TIMESTAMP NULL
                 );
                 """
             )
@@ -118,6 +132,49 @@ def get_conveyors() -> list[dict[str, Any]]:
                     "updated_at": updated_at.isoformat() if updated_at else None,
                 }
             )
+        return response
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc
+
+
+@app.get("/api/events")
+def get_events() -> list[dict[str, Any]]:
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        e.id,
+                        c.name,
+                        e.event_class,
+                        e.event_state,
+                        e.message,
+                        e.created_at,
+                        e.cleared_at
+                    FROM system_events e
+                    LEFT JOIN conveyors c
+                    ON e.conveyor_id = c.id
+                    ORDER BY e.id DESC
+                    LIMIT 500;
+                    """
+                )
+                rows = cur.fetchall()
+
+        response: list[dict[str, Any]] = []
+        for event_id, name, event_class, event_state, message, created_at, cleared_at in rows:
+            response.append(
+                {
+                    "id": event_id,
+                    "name": name,
+                    "event_class": event_class,
+                    "event_state": event_state,
+                    "message": message,
+                    "created_at": created_at.isoformat() if created_at else None,
+                    "cleared_at": cleared_at.isoformat() if cleared_at else None,
+                }
+            )
+
         return response
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc
