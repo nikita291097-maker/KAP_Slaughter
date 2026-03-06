@@ -6,7 +6,7 @@ import psycopg2
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="KAP API", version="0.4")
+app = FastAPI(title="KAP API", version="0.4.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,6 +66,16 @@ def ensure_schema() -> None:
                     severity INTEGER DEFAULT 1,
                     created_at TIMESTAMP NOT NULL DEFAULT now(),
                     cleared_at TIMESTAMP NULL
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conveyor_telemetry (
+                    id BIGSERIAL PRIMARY KEY,
+                    conveyor_id INTEGER REFERENCES conveyors(id),
+                    carcass_count INTEGER,
+                    created_at TIMESTAMP DEFAULT now()
                 );
                 """
             )
@@ -175,6 +185,38 @@ def get_events() -> list[dict[str, Any]]:
                 }
             )
 
+        return response
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc
+
+
+@app.get("/api/telemetry")
+def get_telemetry() -> list[dict[str, Any]]:
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        conveyor_id,
+                        carcass_count,
+                        created_at
+                    FROM conveyor_telemetry
+                    WHERE created_at > now() - interval '30 minutes'
+                    ORDER BY created_at;
+                    """
+                )
+                rows = cur.fetchall()
+
+        response: list[dict[str, Any]] = []
+        for conveyor_id, carcass_count, created_at in rows:
+            response.append(
+                {
+                    "conveyor_id": conveyor_id,
+                    "carcass_count": carcass_count,
+                    "created_at": created_at.isoformat() if created_at else None,
+                }
+            )
         return response
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc

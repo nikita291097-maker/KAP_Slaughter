@@ -33,7 +33,7 @@ export default function ConveyorList() {
     };
 
     loadConveyors();
-    const timerId = window.setInterval(loadConveyors, 2000);
+    const timerId = window.setInterval(loadConveyors, 10000);
 
     return () => {
       isMounted = false;
