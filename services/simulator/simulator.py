@@ -55,6 +55,18 @@ def ensure_rows() -> None:
                 FROM conveyors
                 ON CONFLICT (conveyor_id) DO NOTHING;
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS system_events (
+                    id BIGSERIAL PRIMARY KEY,
+                    conveyor_id INTEGER REFERENCES conveyors(id),
+                    event_class TEXT NOT NULL,
+                    event_state TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    severity INTEGER DEFAULT 1,
+                    created_at TIMESTAMP NOT NULL DEFAULT now(),
+                    cleared_at TIMESTAMP NULL
+                );
+            """)
             conn.commit()
 
 
@@ -84,6 +96,25 @@ def create_event(cur, conveyor_id: int, event_class: str, message: str) -> None:
         """, (conveyor_id, event_class, message))
 
 
+def process_transition(cur, conveyor_id: int, conveyor_name: str, old_status: str | None, new_status: str) -> None:
+    if old_status == new_status:
+        return
+
+    if old_status == "ERROR" and new_status == "RUNNING":
+        close_event(cur, conveyor_id, "ALARM")
+    elif old_status == "WARNING" and new_status == "RUNNING":
+        close_event(cur, conveyor_id, "DEVIATION")
+    elif old_status == "STOPPED" and new_status == "RUNNING":
+        close_event(cur, conveyor_id, "EVENT")
+
+    if old_status == "RUNNING" and new_status == "ERROR":
+        create_event(cur, conveyor_id, "ALARM", f"Авария: {conveyor_name}")
+    elif old_status == "RUNNING" and new_status == "WARNING":
+        create_event(cur, conveyor_id, "DEVIATION", f"Отклонение: {conveyor_name}")
+    elif old_status == "RUNNING" and new_status == "STOPPED":
+        create_event(cur, conveyor_id, "EVENT", f"Конвейер остановлен: {conveyor_name}")
+
+
 def update_state() -> None:
     """Обновляет состояние конвейеров и генерирует события при изменении статуса."""
     with get_connection() as conn:
@@ -105,22 +136,7 @@ def update_state() -> None:
                 # Если статус изменился — обрабатываем события
                 if old_status != new_status:
                     logger.info(f"Конвейер {conveyor_name}: {old_status} -> {new_status}")
-
-                    # Закрываем событие, соответствующее старому проблемному статусу
-                    if old_status == "ERROR":
-                        close_event(cur, conveyor_id, "ALARM")
-                    elif old_status == "WARNING":
-                        close_event(cur, conveyor_id, "DEVIATION")
-                    elif old_status == "STOPPED":
-                        close_event(cur, conveyor_id, "EVENT")
-
-                    # Создаём событие для нового проблемного статуса
-                    if new_status == "ERROR":
-                        create_event(cur, conveyor_id, "ALARM", f"Авария: {conveyor_name}")
-                    elif new_status == "WARNING":
-                        create_event(cur, conveyor_id, "DEVIATION", f"Отклонение: {conveyor_name}")
-                    elif new_status == "STOPPED":
-                        create_event(cur, conveyor_id, "EVENT", "Конвейер остановлен")
+                    process_transition(cur, conveyor_id, conveyor_name, old_status, new_status)
 
                 # Обновляем состояние конвейера
                 cur.execute("""
