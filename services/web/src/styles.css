@@ -90,8 +90,8 @@ body {
 }
 
 .roller {
-  transform-box: fill-box;
-  transform-origin: center;
+  transform-box: fill-box;        /* ограничительная рамка по содержимому */
+  transform-origin: center;       /* центр этой рамки */
   will-change: transform;
 }
 
@@ -104,13 +104,8 @@ body {
 }
 
 @keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes pulse {

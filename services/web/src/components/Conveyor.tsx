@@ -16,22 +16,34 @@ const STATUS_META: Record<ConveyorStatus, { belt: string; indicator: string; lab
 };
 
 function formatUpdatedAt(updatedAt: string | null): string {
-  if (!updatedAt) {
-    return 'нет данных';
-  }
-
+  if (!updatedAt) return 'нет данных';
   const date = new Date(updatedAt);
-  if (Number.isNaN(date.getTime())) {
-    return updatedAt;
-  }
-
+  if (Number.isNaN(date.getTime())) return updatedAt;
   return date.toLocaleString('sv-SE').replace('T', ' ');
 }
 
 export default function Conveyor({ name, status, carcassCount, updatedAt }: ConveyorProps) {
   const meta = STATUS_META[status];
-  const rollerClass = `roller${status === 'RUNNING' ? ' roller--running' : ''}`;
+  const rollerGroupClass = `roller${status === 'RUNNING' ? ' roller--running' : ''}`;
   const indicatorClass = `conveyor-indicator${status === 'ERROR' ? ' conveyor-indicator--error' : ''}`;
+
+  // Зубья шестерни (8 штук по окружности)
+  const teethAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+  const teeth = teethAngles.map((angle) => {
+    const rad = (angle * Math.PI) / 180;
+    const cx = 13 * Math.cos(rad);
+    const cy = 13 * Math.sin(rad);
+    return (
+      <circle
+        key={angle}
+        cx={cx}
+        cy={cy}
+        r="2.5"
+        fill={meta.indicator}
+        stroke="none"
+      />
+    );
+  });
 
   return (
     <article className="conveyor-card" aria-label={name}>
@@ -40,9 +52,14 @@ export default function Conveyor({ name, status, carcassCount, updatedAt }: Conv
         <rect className="conveyor-belt" x="36" y="56" width="288" height="18" rx="9" fill={meta.belt} />
 
         {[70, 140, 210, 280].map((x) => (
+          // Внешняя группа – только позиция
           <g key={x} transform={`translate(${x} 65)`}>
-            <circle className={rollerClass} r="13" fill="#646464" />
-            <circle className={rollerClass} r="5" fill="#bcbcbc" />
+            {/* Внутренняя группа – вращение (если RUNNING) */}
+            <g className={rollerGroupClass}>
+              <circle r="13" fill="#2d2d2d" stroke="#1a1a1a" strokeWidth="1" />
+              <circle r="5" fill="#f0f0f0" stroke="#808080" strokeWidth="0.5" />
+              {teeth}
+            </g>
           </g>
         ))}
 
