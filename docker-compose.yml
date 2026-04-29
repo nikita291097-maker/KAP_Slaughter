@@ -10,7 +10,8 @@ services:
     env_file:
       - .env
     networks:
-      - kap_net
+      kap_net:
+        ipv4_address: 172.16.19.15
 
   web:
     build: ./services/web
@@ -21,7 +22,8 @@ services:
     depends_on:
       - api
     networks:
-      - kap_net
+      kap_net:
+        ipv4_address: 172.16.19.16
 
   simulator:
     build: ./services/simulator
@@ -32,7 +34,20 @@ services:
     depends_on:
       - api
     networks:
-      - kap_net
+      kap_net:
+        ipv4_address: 172.16.19.17
+
+  mqtt_ingest:
+    build: ./services/mqtt_ingest
+    container_name: kap_mqtt_ingest
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - api
+    networks:
+      kap_net:
+        ipv4_address: 172.16.19.18
 
   nginx:
     image: nginx:stable
@@ -48,8 +63,13 @@ services:
       - web
       - api
     networks:
-      - kap_net
+      kap_net:
+        ipv4_address: 172.16.19.19
 
 networks:
   kap_net:
+    name: kap-net
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.19.0/24
