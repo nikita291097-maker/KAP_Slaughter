@@ -30,26 +30,63 @@ def handle_effective(msg):
             value=int(data["value"])
         )
 
+        #
+        # DEDUPLICATION
+        #
+
+        prev_value = state.last_states.get(
+            event.event_id
+        )
+
+        if prev_value == event.value:
+
+            log.info(
+                f"Duplicate skipped: "
+                f"id={event.event_id}, "
+                f"value={event.value}"
+            )
+
+            return
+
+        #
+        # UPDATE LAST STATE
+        #
+
+        state.last_states[
+            event.event_id
+        ] = event.value
+
+        #
+        # SPOOL
+        #
+
         append_to_spool(
             event.to_json()
         )
 
-        state.buffer.append(
-            event.to_tuple()
-        )
+        #
+        # BUFFER
+        #
 
-        if len(state.buffer) > MAX_BUFFER_SIZE:
+        with state.buffer_lock:
 
-            overflow = (
-                len(state.buffer)
-                - MAX_BUFFER_SIZE
+            state.buffer.append(
+                event.to_tuple()
             )
 
-            del state.buffer[:overflow]
+            if len(state.buffer) > MAX_BUFFER_SIZE:
 
-            log.warning(
-                f"Buffer overflow: dropped {overflow}"
-            )
+                overflow = (
+                    len(state.buffer)
+                    - MAX_BUFFER_SIZE
+                )
+
+                del state.buffer[:overflow]
+
+                log.warning(
+                    f"Buffer overflow: "
+                    f"dropped {overflow}"
+                )
 
     except Exception as e:
 

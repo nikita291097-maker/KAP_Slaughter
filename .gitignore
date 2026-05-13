@@ -4,6 +4,9 @@ node_modules/
 db_data/
 .vscode/
 .idea/
-app.log
-.gitignore
+
 .env
+
+logs/
+*.log
+*.log.*
