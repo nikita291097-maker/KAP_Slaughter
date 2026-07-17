@@ -9,6 +9,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - SOURCE_NAME=ЗИВИЛ         
     volumes:
       - ./logs:/app/logs
     logging:

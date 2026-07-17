@@ -4,9 +4,9 @@ from psycopg2.extras import execute_batch
 
 from core.logger import log
 from core.spool import clear_spool
+from core.config import SOURCE_NAME   # <-- импорт
 
 from core import state
-
 import core.db as db
 
 
@@ -35,7 +35,8 @@ def flush():
                     eid,
                     eid,
                     ts,
-                    val
+                    val,
+                    SOURCE_NAME        # <-- используем переменную
                 )
             )
 
@@ -48,9 +49,10 @@ def flush():
                     num,
                     iderror,
                     mydate,
-                    status
+                    status,
+                    source
                 )
-                VALUES (%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s)
             """, batch)
 
         with state.buffer_lock:
@@ -61,7 +63,7 @@ def flush():
 
         log.info(
             f"Flushed {len(batch)} events "
-            f"(last_id={state.current_error_id})"
+            f"(last_id={state.current_error_id}, source={SOURCE_NAME})"
         )
 
     except Exception as e:

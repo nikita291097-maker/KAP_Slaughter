@@ -20,3 +20,6 @@ LOG_DIR = "/app/logs"
 SPOOL_DIR = "/app/spool"
 
 SPOOL_FILE = f"{SPOOL_DIR}/events.log"
+
+# Новая переменная – источник данных
+SOURCE_NAME = os.getenv("SOURCE_NAME", "ЗИВИЛ")
