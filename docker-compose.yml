@@ -22,6 +22,32 @@ services:
       kap_net:
         ipv4_address: 172.16.19.15
 
+  siemens_client:
+    build: ./services/siemens_client
+    container_name: kap_siemens_client
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SOURCE_NAME=Foran
+      - PLC_IP=172.18.48.160
+      - PLC_RACK=0
+      - PLC_SLOT=1
+      - PLC_DB_NUMBER=49
+      - PLC_POLL_INTERVAL=1
+      - PLC_ERROR_THRESHOLD=3
+    volumes:
+      - ./logs:/app/logs
+      - ./spool:/app/spool
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      kap_net:
+        ipv4_address: 172.16.19.16
+
 networks:
   kap_net:
     name: kap-net
