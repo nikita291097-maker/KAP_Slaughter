@@ -48,6 +48,115 @@ services:
       kap_net:
         ipv4_address: 172.16.19.16
 
+  siemens_obezvolash_1:
+    build: ./services/siemens_obezvolash
+    container_name: kap_siemens_obezvolash_1
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SOURCE_NAME=Foran
+      - PLC_ID=1
+      - PLC_IP=172.18.48.161
+      - PLC_RACK=0
+      - PLC_SLOT=1
+      - PLC_DB_NUMBER=23
+      - PLC_POLL_INTERVAL=1
+      - PLC_ERROR_THRESHOLD=3
+    volumes:
+      - ./logs:/app/logs
+      - ./spool:/app/spool
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      kap_net:
+        ipv4_address: 172.16.19.17
+
+  siemens_obezvolash_2:
+    build: ./services/siemens_obezvolash
+    container_name: kap_siemens_obezvolash_2
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SOURCE_NAME=Foran
+      - PLC_ID=2
+      - PLC_IP=172.18.48.162
+      - PLC_RACK=0
+      - PLC_SLOT=1
+      - PLC_DB_NUMBER=23
+      - PLC_POLL_INTERVAL=1
+      - PLC_ERROR_THRESHOLD=3
+    volumes:
+      - ./logs:/app/logs
+      - ./spool:/app/spool
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      kap_net:
+        ipv4_address: 172.16.19.18
+
+  siemens_ovens_1:
+    build: ./services/siemens_ovens
+    container_name: kap_siemens_ovens_1
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SOURCE_NAME=Foran
+      - PLC_ID=1
+      - PLC_IP=172.18.48.163
+      - PLC_RACK=0
+      - PLC_SLOT=1
+      - PLC_DB_NUMBER=10
+      - PLC_POLL_INTERVAL=1
+      - PLC_ERROR_THRESHOLD=3
+    volumes:
+      - ./logs:/app/logs
+      - ./spool:/app/spool
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      kap_net:
+        ipv4_address: 172.16.19.19
+
+  siemens_ovens_2:
+    build: ./services/siemens_ovens
+    container_name: kap_siemens_ovens_2
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SOURCE_NAME=Foran
+      - PLC_ID=2
+      - PLC_IP=172.18.48.164
+      - PLC_RACK=0
+      - PLC_SLOT=1
+      - PLC_DB_NUMBER=10
+      - PLC_POLL_INTERVAL=1
+      - PLC_ERROR_THRESHOLD=3
+    volumes:
+      - ./logs:/app/logs
+      - ./spool:/app/spool
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      kap_net:
+        ipv4_address: 172.16.19.20
+
+
 networks:
   kap_net:
     name: kap-net
