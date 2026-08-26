@@ -115,8 +115,9 @@ services:
       - PLC_RACK=0
       - PLC_SLOT=1
       - PLC_DB_NUMBER=10
-      - PLC_POLL_INTERVAL=1
-      - PLC_ERROR_THRESHOLD=3
+      - PLC_DB_SIZE=36             
+      - PLC_POLL_INTERVAL=2        
+      - PLC_ERROR_THRESHOLD=10     
     volumes:
       - ./logs:/app/logs
       - ./spool:/app/spool
@@ -142,8 +143,9 @@ services:
       - PLC_RACK=0
       - PLC_SLOT=1
       - PLC_DB_NUMBER=10
-      - PLC_POLL_INTERVAL=1
-      - PLC_ERROR_THRESHOLD=3
+      - PLC_DB_SIZE=36               
+      - PLC_POLL_INTERVAL=2           
+      - PLC_ERROR_THRESHOLD=10        
     volumes:
       - ./logs:/app/logs
       - ./spool:/app/spool

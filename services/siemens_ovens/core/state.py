@@ -16,4 +16,6 @@ plc_last_total = None
 plc_connection_lost = False
 plc_error_count = 0
 
+plc_connection_event_generated = False
+
 DEBOUNCE_TIME = 3  # секунды

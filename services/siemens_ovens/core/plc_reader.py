@@ -5,41 +5,36 @@ from core.logger import log
 from core.config import PLC_ID
 
 DB_NUMBER = 10
-DB_SIZE = 100   # достаточно для смещений до 35.4
+MAX_DB_SIZE = 36   # достаточно для всех смещений (до 35.4)
 
-# ---------- Маппинг для печи 1 (ID 800..823) ----------
+# ---------- Маппинг (без изменений) ----------
 SIGNAL_MAP_1 = {
-    # Информационные сигналы (801-810)
-    801: ('bool', 34, 0),   # VoltageOk
-    802: ('bool', 34, 1),   # PowerOn24V
-    803: ('bool', 34, 2),   # DeblockFO
-    804: ('bool', 34, 4),   # FOReady
-    805: ('bool', 34, 5),   # HermesityOk
-    806: ('bool', 34, 6),   # PressureGas_Ok
-    807: ('bool', 34, 7),   # PressureAir_Ok
-    808: ('bool', 35, 0),   # GasBurnerReady
-    809: ('bool', 35, 3),   # SensorFlowReply
-    810: ('bool', 35, 4),   # PowerOn
-
-    # Аварийные биты (812-823) из Alarms[0]
+    801: ('bool', 34, 0),
+    802: ('bool', 34, 1),
+    803: ('bool', 34, 2),
+    804: ('bool', 34, 4),
+    805: ('bool', 34, 5),
+    806: ('bool', 34, 6),
+    807: ('bool', 34, 7),
+    808: ('bool', 35, 0),
+    809: ('bool', 35, 3),
+    810: ('bool', 35, 4),
     812: ('bool_word', 0, 1),
     813: ('bool_word', 0, 2),
     814: ('bool_word', 0, 3),
     815: ('bool_word', 0, 4),
-    816: ('bool_word', 0, 5),   # Warning
+    816: ('bool_word', 0, 5),
     817: ('bool_word', 0, 6),
     818: ('bool_word', 0, 7),
     819: ('bool_word', 0, 8),
     820: ('bool_word', 0, 9),
     821: ('bool_word', 0, 10),
-    822: ('bool_word', 0, 11),  # Warning
+    822: ('bool_word', 0, 11),
     823: ('bool_word', 0, 12),
 }
 LOST_CONNECTION_ID_1 = 800
 
-# ---------- Маппинг для печи 2 (ID 850..873) ----------
 SIGNAL_MAP_2 = {
-    # Информационные (851-860)
     851: ('bool', 34, 0),
     852: ('bool', 34, 1),
     853: ('bool', 34, 2),
@@ -50,8 +45,6 @@ SIGNAL_MAP_2 = {
     858: ('bool', 35, 0),
     859: ('bool', 35, 3),
     860: ('bool', 35, 4),
-
-    # Аварийные (862-873)
     862: ('bool_word', 0, 1),
     863: ('bool_word', 0, 2),
     864: ('bool_word', 0, 3),
@@ -67,7 +60,6 @@ SIGNAL_MAP_2 = {
 }
 LOST_CONNECTION_ID_2 = 850
 
-# Выбор маппинга по PLC_ID
 if PLC_ID == 1:
     SIGNAL_MAP = SIGNAL_MAP_1
     LOST_CONNECTION_ID = LOST_CONNECTION_ID_1
@@ -77,15 +69,19 @@ elif PLC_ID == 2:
 else:
     raise ValueError("PLC_ID must be 1 or 2")
 
-# Функции чтения и парсинга (без изменений)
 def read_plc(ip, rack, slot, db_number):
     client = snap7.client.Client()
     try:
         client.connect(ip, rack, slot)
-        data = client.db_read(db_number, 0, DB_SIZE)
+        data = client.db_read(db_number, 0, MAX_DB_SIZE)
         client.disconnect()
         return data
     except Exception as e:
+        try:
+            client.disconnect()
+        except:
+            pass
+        log.error(f"PLC read error: {e}")
         raise
 
 def parse_bool(data, byte_offset, bit_offset):

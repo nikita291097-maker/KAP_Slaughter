@@ -19,7 +19,7 @@ def generate_event(event_id, status, timestamp=None):
         state.buffer.append(event.to_tuple())
 
 def reader_loop():
-    log.info(f"PLC reader started for Обезволаш {PLC_ID} ({PLC_IP})")
+    log.info(f"PLC reader started for Опалочная печь {PLC_ID} ({PLC_IP})")
 
     event_ids = list(SIGNAL_MAP.keys())
     # Инициализация состояний
@@ -37,19 +37,27 @@ def reader_loop():
 
     state.plc_connection_lost = False
     state.plc_error_count = 0
+    state.plc_connection_event_generated = False  # используем глобальную переменную из state
+
+    # При старте: закрываем все активные события и потерю связи
+    generate_event(LOST_CONNECTION_ID, 0)
+    for eid in event_ids:
+        generate_event(eid, 0)
+        state.plc_active_events[eid] = False
 
     error_counter = 0
-    LOG_ERROR_INTERVAL = 10
+    LOG_ERROR_INTERVAL = 5
 
     while True:
         try:
             data = read_plc(PLC_IP, PLC_RACK, PLC_SLOT, PLC_DB_NUMBER)
             state.plc_error_count = 0
             error_counter = 0
+            state.plc_connection_event_generated = False  # сброс после успешного чтения
 
             # Восстановление после потери
             if state.plc_connection_lost:
-                log.info(f"PLC connection restored (Обезволаш {PLC_ID})")
+                log.info(f"PLC connection restored (Опалочная печь {PLC_ID})")
                 state.plc_connection_lost = False
                 generate_event(LOST_CONNECTION_ID, 0)
 
@@ -105,11 +113,14 @@ def reader_loop():
             if error_counter % LOG_ERROR_INTERVAL == 0:
                 log.error(f"PLC read failed ({state.plc_error_count} errors): {e}")
 
-            if state.plc_error_count >= PLC_ERROR_THRESHOLD and not state.plc_connection_lost:
-                log.warning(f"PLC connection lost (Обезволаш {PLC_ID})")
+            # Генерируем потерю связи, если порог достигнут и событие ещё не создано
+            if state.plc_error_count >= PLC_ERROR_THRESHOLD and not state.plc_connection_event_generated:
+                log.warning(f"PLC connection lost (Опалочная печь {PLC_ID})")
                 state.plc_connection_lost = True
+                state.plc_connection_event_generated = True
                 generate_event(LOST_CONNECTION_ID, 1)
 
+                # Закрываем все активные сигналы
                 for eid in event_ids:
                     if state.plc_active_events.get(eid, False):
                         generate_event(eid, 0)
@@ -120,4 +131,4 @@ def reader_loop():
 def start_reader_worker():
     from threading import Thread
     t = Thread(target=reader_loop, daemon=True)
-    t.start()
+    t.start()                                            
