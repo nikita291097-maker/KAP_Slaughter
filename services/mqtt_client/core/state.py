@@ -1,5 +1,7 @@
 from threading import Lock
 
+last_emit_time: dict[int, float] = {}   # event_id -> ms epoch
+
 buffer = []
 buffer_lock = Lock()
 

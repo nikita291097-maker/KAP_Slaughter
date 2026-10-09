@@ -38,7 +38,36 @@ def clear_spool():
     with open(SPOOL_FILE, "w", encoding="utf-8"):
         pass
 
+def load_spool():
+    try:
+        if not os.path.exists(SPOOL_FILE):
+            return
 
+        restored = 0
+
+        with open(SPOOL_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                data = json.loads(line)
+                event = Event(
+                    event_id=data["event_id"],
+                    timestamp=datetime.fromisoformat(data["timestamp"]),
+                    value=data["value"]
+                )
+                state.buffer.append(event.to_tuple())
+
+                # ← восстанавливаем last_states, чтобы дедуп работал сразу
+                state.last_states[event.event_id] = event.value
+
+                restored += 1
+
+        log.warning(f"Restored {restored} events from spool")
+
+    except Exception as e:
+        log.error(f"Spool load error: {e}")
+        
 def load_spool():
 
     try:

@@ -29,7 +29,7 @@ services:
     env_file:
       - .env
     environment:
-      - SOURCE_NAME=Foran
+      - SOURCE_NAME=Voran
       - PLC_IP=172.18.48.160
       - PLC_RACK=0
       - PLC_SLOT=1
@@ -55,7 +55,7 @@ services:
     env_file:
       - .env
     environment:
-      - SOURCE_NAME=Foran
+      - SOURCE_NAME=Voran
       - PLC_ID=1
       - PLC_IP=172.18.48.161
       - PLC_RACK=0
@@ -82,7 +82,7 @@ services:
     env_file:
       - .env
     environment:
-      - SOURCE_NAME=Foran
+      - SOURCE_NAME=Voran
       - PLC_ID=2
       - PLC_IP=172.18.48.162
       - PLC_RACK=0
@@ -109,7 +109,7 @@ services:
     env_file:
       - .env
     environment:
-      - SOURCE_NAME=Foran
+      - SOURCE_NAME=Voran
       - PLC_ID=1
       - PLC_IP=172.18.48.163
       - PLC_RACK=0
@@ -137,7 +137,7 @@ services:
     env_file:
       - .env
     environment:
-      - SOURCE_NAME=Foran
+      - SOURCE_NAME=Voran
       - PLC_ID=2
       - PLC_IP=172.18.48.164
       - PLC_RACK=0
