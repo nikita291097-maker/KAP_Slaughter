@@ -100,6 +100,10 @@ def load_spool():
                     event.to_tuple()
                 )
 
+                # ← ВАЖНО: восстанавливаем last_states, чтобы после рестарта
+                # не создавать pending для тех же значений заново.
+                state.last_states[event.event_id] = event.value
+
                 restored += 1
 
         log.warning(

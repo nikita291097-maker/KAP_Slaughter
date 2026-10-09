@@ -7,6 +7,7 @@ from core.mqtt import start_mqtt
 
 from workers.flush_worker import start_flush_worker
 from workers.heartbeat_worker import start_heartbeat_worker
+from workers.stable_worker import start_stable_worker
 
 
 def main():
@@ -16,6 +17,14 @@ def main():
     init_db()
 
     load_spool()
+
+    #
+    # stable_worker запускаем ДО mqtt — чтобы pending сразу обрабатывался
+    #
+    Thread(
+        target=start_stable_worker,
+        daemon=True
+    ).start()
 
     Thread(
         target=start_flush_worker,

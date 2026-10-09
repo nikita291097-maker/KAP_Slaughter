@@ -1,40 +1,35 @@
 import time
-from psycopg2.extras import execute_batch
+
 from core.logger import log
-from core.spool import clear_spool
-from core.config import SOURCE_NAME
+from core.config import DEBOUNCE_MS, STABLE_TICK_MS, MAX_PENDING_AGE_MS
 from core import state
-import core.db as db
+from handlers.effective_handler import emit_stable
 
-def flush():
-    with state.buffer_lock:
-        if not state.buffer:
-            return
-        batch_data = state.buffer[:]
 
-    try:
-        db.ensure_connection()
-        batch = []
-        for eid, ts, val in batch_data:
-            batch.append((eid, eid, ts, val, SOURCE_NAME))
+def start_stable_worker():
+    """
+    Раз в STABLE_TICK_MS проверяет pending.
+    Если значение не менялось >= DEBOUNCE_MS — эмитит его.
+    """
+    log.info(f"Stable worker started (debounce={DEBOUNCE_MS}ms, tick={STABLE_TICK_MS}ms)")
 
-        with db.conn.cursor() as cur:
-            execute_batch(cur, """
-                INSERT INTO kap_error (num, iderror, mydate, status, source)
-                VALUES (%s,%s,%s,%s,%s)
-                ON CONFLICT (iderror, mydate) DO NOTHING
-            """, batch)
-
-        with state.buffer_lock:
-            del state.buffer[:len(batch_data)]
-
-        clear_spool()
-        log.info(f"Flushed {len(batch)} events (source={SOURCE_NAME})")
-
-    except Exception as e:
-        log.error(f"Batch insert error: {e}")
-
-def start_flush_worker():
     while True:
-        time.sleep(5)
-        flush()
+        time.sleep(STABLE_TICK_MS / 1000.0)
+        now = time.monotonic()
+
+        ready = []
+        for event_id, p in list(state.pending.items()):
+            age_stable = (now - p["last_change"]) * 1000.0
+            age_total  = (now - p["first_seen"])  * 1000.0
+
+            # стабильно достаточно ИЛИ висит слишком долго (защита от утечки)
+            if age_stable >= DEBOUNCE_MS or age_total >= MAX_PENDING_AGE_MS:
+                ready.append((event_id, p))
+                del state.pending[event_id]
+
+        for event_id, p in ready:
+            emit_stable(event_id, p["candidate"], p["timestamp"])
+            log.debug(
+                f"Emitted stable: id={event_id}, value={p['candidate']}, "
+                f"stable_for={int((now - p['last_change']) * 1000)}ms"
+            )

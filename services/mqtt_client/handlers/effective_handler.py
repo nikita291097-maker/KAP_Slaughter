@@ -5,62 +5,21 @@ from datetime import datetime
 
 from core.logger import log
 from core.spool import append_to_spool
-from core.config import MAX_BUFFER_SIZE, EVENT_MIN_INTERVAL_MS, DEBOUNCE_MS, DEBOUNCE_EVENTS
-
+from core.config import MAX_BUFFER_SIZE, DEBOUNCE_EXCLUDE
 from core import state
 
 from models.event import Event
 
 
-#
-# Локальное состояние rate-limit и debounce.
-# Хранится в модуле, сбрасывается при рестарте сервиса.
-# При рестарте не критично — MQTT QoS=1 + ON CONFLICT в БД добьют дубли.
-#
-_last_emit_ms: dict = {}        # event_id -> epoch ms последней записи
-_last_transition_ms: dict = {}  # event_id -> epoch ms последнего фронта (для debounce)
-
-
-def _passes_rate_limit(event_id: int) -> bool:
-    """
-    True, если событие можно записать (не слишком часто).
-    Для event_id без лимита возвращает True.
-    """
-    min_interval = EVENT_MIN_INTERVAL_MS.get(event_id, 0)
-    if min_interval <= 0:
-        return True
-
-    now_ms = time.time() * 1000.0
-    last_ms = _last_emit_ms.get(event_id, 0.0)
-
-    if now_ms - last_ms < min_interval:
-        return False
-
-    _last_emit_ms[event_id] = now_ms
-    return True
-
-
-def _passes_debounce(event_id: int, value: int) -> bool:
-    """
-    Отсекает дребезг счётчиков: повторный приход того же значения
-    в пределах DEBOUNCE_MS считается шумом.
-    Применяется только к event_id из DEBOUNCE_EVENTS.
-    """
-    if event_id not in DEBOUNCE_EVENTS:
-        return True
-
-    now_ms = time.time() * 1000.0
-    prev = state.last_states.get(event_id)
-    last_ms = _last_transition_ms.get(event_id, 0.0)
-
-    if prev == value and now_ms - last_ms < DEBOUNCE_MS:
-        return False
-
-    _last_transition_ms[event_id] = now_ms
-    return True
-
-
 def handle_effective(msg):
+    """
+    Обработчик MQTT-сообщения event/<id>/effective.
+
+    Логика:
+      - Если event_id в DEBOUNCE_EXCLUDE → пишем сразу (без debounce).
+      - Иначе кладём в state.pending и ждём стабилизации.
+        stable_worker через DEBOUNCE_MS эмитит последнее стабильное значение.
+    """
 
     try:
 
@@ -73,93 +32,106 @@ def handle_effective(msg):
 
         event = Event(
             event_id=data["id"],
-            timestamp=datetime.fromisoformat(
-                data["timestamp"]
-            ),
+            timestamp=datetime.fromisoformat(data["timestamp"]),
             value=int(data["value"])
         )
 
         #
-        # RATE LIMIT
-        # Для "шумных" event_id (640, датчики, такты) — не чаще N мс.
-        # Отсекает 62 сообщения/сек по одному и тому же коду.
+        # DEBOUNCE EXCLUDE — пишем сразу
         #
-        if not _passes_rate_limit(event.event_id):
-            log.debug(
-                f"Rate-limited: id={event.event_id}, "
-                f"value={event.value}"
-            )
+        if event.event_id in DEBOUNCE_EXCLUDE:
+            _emit(event)
             return
 
         #
-        # DEDUPLICATION по value
-        # Если значение не изменилось — пропускаем.
-        # Работает для дискретных сигналов (0/1), не работает для счётчиков.
+        # DEBOUNCE через pending
         #
-        prev_value = state.last_states.get(
-            event.event_id
-        )
+        now = time.monotonic()
+        last_emitted = state.last_states.get(event.event_id)
+        pending = state.pending.get(event.event_id)
 
-        if prev_value == event.value:
-            log.debug(
-                f"Duplicate skipped: "
-                f"id={event.event_id}, "
-                f"value={event.value}"
-            )
-            return
-
-        #
-        # DEBOUNCE
-        # Для счётчиков из DEBOUNCE_EVENTS: игнорируем повторный фронт
-        # того же значения в пределах DEBOUNCE_MS.
-        # Спасает от дребезга датчика "Туша проехала".
-        #
-        if not _passes_debounce(event.event_id, event.value):
-            log.debug(
-                f"Debounced: id={event.event_id}, "
-                f"value={event.value}"
-            )
-            return
-
-        #
-        # UPDATE LAST STATE
-        #
-        state.last_states[
-            event.event_id
-        ] = event.value
-
-        #
-        # SPOOL
-        #
-        append_to_spool(
-            event.to_json()
-        )
-
-        #
-        # BUFFER
-        #
-        with state.buffer_lock:
-
-            state.buffer.append(
-                event.to_tuple()
-            )
-
-            if len(state.buffer) > MAX_BUFFER_SIZE:
-
-                overflow = (
-                    len(state.buffer)
-                    - MAX_BUFFER_SIZE
+        if pending is None:
+            #
+            # Нет pending-записи.
+            #
+            # Если пришедшее значение совпадает с последним отправленным —
+            # это дедупликация, игнорируем.
+            #
+            if last_emitted == event.value:
+                log.debug(
+                    f"Duplicate skipped: "
+                    f"id={event.event_id}, value={event.value}"
                 )
+                return
 
-                del state.buffer[:overflow]
-
-                log.warning(
-                    f"Buffer overflow: "
-                    f"dropped {overflow}"
+            #
+            # Новое значение — начинаем ждать стабильности.
+            #
+            state.pending[event.event_id] = {
+                "candidate":   event.value,
+                "last_change": now,
+                "first_seen":  now,
+                "timestamp":   event.timestamp,
+            }
+            log.debug(
+                f"Pending new: "
+                f"id={event.event_id}, value={event.value}"
+            )
+        else:
+            #
+            # Pending уже есть.
+            #
+            if pending["candidate"] != event.value:
+                #
+                # Значение изменилось — сбрасываем таймер стабилизации.
+                #
+                pending["candidate"]   = event.value
+                pending["last_change"] = now
+                pending["timestamp"]   = event.timestamp
+                log.debug(
+                    f"Pending reset: "
+                    f"id={event.event_id}, value={event.value}"
                 )
+            else:
+                #
+                # То же значение — обновляем только timestamp
+                # (для точности event_time в БД). Таймер НЕ сбрасываем.
+                #
+                pending["timestamp"] = event.timestamp
 
     except Exception as e:
 
         log.error(
             f"Effective parse error: {e}"
         )
+
+
+def _emit(event: Event):
+    """
+    Немедленная запись в spool + буфер.
+    Вызывается либо для DEBOUNCE_EXCLUDE, либо stable_worker'ом.
+    """
+    append_to_spool(event.to_json())
+
+    with state.buffer_lock:
+
+        state.buffer.append(event.to_tuple())
+
+        if len(state.buffer) > MAX_BUFFER_SIZE:
+
+            overflow = len(state.buffer) - MAX_BUFFER_SIZE
+
+            del state.buffer[:overflow]
+
+            log.warning(
+                f"Buffer overflow: dropped {overflow}"
+            )
+
+
+def emit_stable(event_id: int, value: int, timestamp: datetime):
+    """
+    Публичный API для stable_worker.
+    Обновляет last_states и вызывает _emit.
+    """
+    state.last_states[event_id] = value
+    _emit(Event(event_id=event_id, timestamp=timestamp, value=value))
